@@ -12,6 +12,7 @@ from fedex.services.pickup_service import FedexCreatePickupRequest
 from fedex.services.rate_service import FedexRateServiceRequest
 from frappe.utils.file_manager import save_file
 from fedex.services.track_service import FedexTrackRequest
+from custom_packing_slip.packing_slip_track_status import packing_slip_tracking_status
 import frappe.client as client
 import base64
 import datetime
@@ -347,8 +348,44 @@ class FedexController():
 				}
 				shipment.RequestedShipment.SpecialServicesRequested.EMailNotificationDetail.Recipients.append(notify_dict)
 
+	
 	def validate_address(self, address):
 		for field, label in {"country":"Country", "country_code":"Country Code", "pincode":"Pin Code", \
 						"phone":"Phone", "email_id":"Email ID", "city":"City", "address_line1":"Address Lines"}.items():
 			if not address.get(field):
 				raise frappe.ValidationError("Please specify {1} in Address {0}".format(address.get("name"), label))
+
+	
+	def track_shipment(self, tracking_id):
+		customer_transaction_id = "*** TrackService Request v10 using Python ***"  # Optional transaction_id
+		track = FedexTrackRequest(self.config_obj)
+
+		# Track by Tracking Number
+		track.SelectionDetails.PackageIdentifier.Type = 'TRACKING_NUMBER_OR_DOORTAG'
+		track.SelectionDetails.PackageIdentifier.Value = '{0}'.format(tracking_id)
+
+		# FedEx operating company or delete
+		del track.SelectionDetails.OperatingCompany
+		track.send_request()
+		package_tracking_details = {}
+		for c_t_d in track.response.CompletedTrackDetails:
+			for t_d in c_t_d.TrackDetails:
+				if hasattr(t_d, 'EstimatedDeliveryTimestamp'):
+					package_tracking_details["EstimatedDelivery"] = t_d.EstimatedDeliveryTimestamp.strftime("%Y-%m-%d %H:%M:%S")
+				if hasattr(t_d, 'ActualDeliveryTimestamp'):
+					package_tracking_details["ActualDelivery"] = t_d.ActualDeliveryTimestamp.strftime("%Y-%m-%d %H:%M:%S")
+				if hasattr(t_d,"Notification"):
+					if t_d.Notification.Severity == "SUCCESS":
+						package_tracking_details['track_code'] = t_d.StatusDetail.Code
+						package_tracking_details['shipment_status'] = packing_slip_tracking_status(t_d.StatusDetail.Code) if packing_slip_tracking_status(t_d.StatusDetail.Code) else ""
+						package_tracking_details['shipment_description'] = t_d.StatusDetail.Description
+						package_tracking_details['message'] = "<b>Tracking ID -</b> {0}<br><b>Tracking Status -</b> {1} - {2}<br><b>Description - </b>{3}<br>".format(tracking_id,\
+																t_d.StatusDetail.Code,package_tracking_details['shipment_status'],t_d.StatusDetail.Description,t_d.Notification.LocalizedMessage)
+					if t_d.Notification.Severity == "ERROR":
+						package_tracking_details['message'] = """<b>Tracking ID -</b> {0}<br>
+																<b>Notification Code -</b> {1}<br>{2}""".format(tracking_id,
+																t_d.Notification.Code,t_d.Notification.LocalizedMessage)
+						package_tracking_details['shipment_status'] = ""
+						package_tracking_details['shipment_description'] = ""
+						package_tracking_details['track_code'] = t_d.Notification.Code
+		return package_tracking_details

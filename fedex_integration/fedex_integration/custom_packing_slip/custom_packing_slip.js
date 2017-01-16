@@ -40,11 +40,23 @@ cur_frm.set_query('weight_uom', 'items', function(doc, cdt, cdn) {
 
 frappe.ui.form.on('Packing Slip', {
 	is_fedex_account: function(frm){
-		cur_frm.cscript.enable_fedex_fields(frm);	
+		frm.cscript.enable_fedex_fields(frm);	
+	},
+	length:function(frm){
+		frm.cscript.add_demension_in_fedex_package_details("length", frm.doc.length, frm);
+	},
+	width:function(frm){
+		frm.cscript.add_demension_in_fedex_package_details("width", frm.doc.width, frm);
+	},
+	height:function(frm){
+		frm.cscript.add_demension_in_fedex_package_details("height", frm.doc.height, frm);
 	},
 	shipment_forwarder:function(frm){
 		if (frm.doc.shipment_forwarder == ""){
-			cur_frm.set_value("is_fedex_account", 0);
+			frm.set_value("is_fedex_account", 0);
+		}
+		if(frm.doc.shipment_forwarder){
+			cur_frm.cscript.enable_fedex_fields(frm);
 		}
 	},
 	shipping_payment_by:function(frm){
@@ -52,6 +64,18 @@ frappe.ui.form.on('Packing Slip', {
 	},
 	duties_payment_by:function(frm){
 		frm.toggle_reqd("duties_payment_account", inList(["RECIPIENT", "THIRD_PARTY"], frm.doc.duties_payment_by));
+	},
+	is_dimension_identical:function(frm){
+		if(frm.doc.is_dimension_identical){
+			frm.cscript.add_demension_in_fedex_package_details("length", frm.doc.length, frm);
+			frm.cscript.add_demension_in_fedex_package_details("width", frm.doc.width, frm);
+			frm.cscript.add_demension_in_fedex_package_details("height", frm.doc.height, frm);		
+		}
+		else{
+			frm.cscript.add_demension_in_fedex_package_details("length", 0, frm);
+			frm.cscript.add_demension_in_fedex_package_details("width", 0, frm);
+			frm.cscript.add_demension_in_fedex_package_details("height", 0, frm);		
+		}
 	},
 	no_of_packages:function(frm){
 		if(frm.doc.no_of_packages){
@@ -71,6 +95,12 @@ frappe.ui.form.on('Packing Slip', {
 						$.each(package_array, function(i, d) {
 							var row = frappe.model.add_child(frm.doc, "FedEx Package Details", "fedex_package_details");
 							row.fedex_package = r.message[i].name;
+							row.physical_packaging = "BOX";
+							if(frm.doc.is_dimension_identical){
+								row.length = frm.doc.length;
+								row.width = frm.doc.width;
+								row.height = frm.doc.height;	
+							}
 						});
 						cur_frm.refresh_field("fedex_package_details");
 						cur_frm.cscript.set_package_uom(frm);
@@ -79,8 +109,7 @@ frappe.ui.form.on('Packing Slip', {
 												Please add packages in master & try again.", {"pkg_no":frm.doc.no_of_packages})));
 					}
 				}
-			});
-			
+			});	
 		}
 	},
 	refresh:function(frm){
@@ -92,26 +121,39 @@ frappe.ui.form.on('Packing Slip', {
 					cur_frm.add_custom_button(__('Schedule Pickup'),
 						function() { cur_frm.cscript.schedule_pickup(); }, 'icon-retweet', 'btn-default');	
 				}
+				cur_frm.add_custom_button(__('Track Shipment'),
+						function() { cur_frm.cscript.track_fedex_shipment(frm); }, 'icon-retweet', 'btn-default');
 			}
 
 		}else{
 			$(frm.fields_dict.master_tracking_id.wrapper).html("");
 		}
+		if(frm.doc.__islocal){
+			cur_frm.cscript.set_kg_and_add_one_package(frm);
+		}
 		cur_frm.cscript.enable_fedex_fields(frm);
-
 	},
+
 	set_kg:function(frm){
 		if (frm.doc.set_kg){
+			cur_frm.cscript.concate_weight_uom_formatter(frm, "Kg");
 			cur_frm.events.init_weight_uom_change_process(frm, "Kg", "CM", "set_lb");
 		}
 	},
 	set_lb:function(frm){
-		if (frm.doc.set_lb){
+		if (frm.doc.set_lb){				
+			cur_frm.cscript.concate_weight_uom_formatter(frm, "LB");
 			cur_frm.events.init_weight_uom_change_process(frm, "LB", "IN", "set_kg");
 		}
 	},
 	onload:function(frm){
 		cur_frm.cscript.set_weight_uom_formatter();
+		if(frm.doc.__islocal){
+			cur_frm.cscript.concate_weight_uom_formatter(frm, "Kg");
+		}
+		else{
+			cur_frm.cscript.concate_weight_uom_formatter(frm, frm.doc.net_weight_uom);
+		}
 	},
 	init_weight_uom_change_process:function(frm, wt_uom, pkg_uom, field){
 		cur_frm.cscript.set_box_uom(frm, pkg_uom);
@@ -128,6 +170,21 @@ get_entity_list = function(child_table, field_name){
 		entity_ids.push(pkg[field_name]);
 	})
 	return entity_ids
+}
+
+
+cur_frm.cscript.add_demension_in_fedex_package_details = function(demension_name,demension,frm){
+	if(frm.doc.fedex_package_details){
+		$.each(frm.doc.fedex_package_details,function(row,data){
+			frappe.model.set_value(data.doctype, data.name, 
+					String(demension_name), demension);
+		})
+	}
+}
+
+cur_frm.cscript.set_kg_and_add_one_package = function(){
+	cur_frm.set_value("set_kg",1);
+	cur_frm.set_value("no_of_packages",1);
 }
 
 cur_frm.cscript.schedule_pickup = function(){
@@ -171,6 +228,17 @@ cur_frm.cscript.convert_shipment_amount = function(frm){
 	
 }
 
+
+cur_frm.cscript.add_options_for_shipment_status = function(frm){
+	if(frm.doc.is_fedex_account){
+		cur_frm.set_df_property("shipment_status","options",['','At FedEx Destination','Broker','Return label link emailed to return sender','CDO requested','Return to Shipper','Return label link expired','Return label link expiring soon','CDO Cancelled OR Recipient','CDO Modified','Location Changed','Pickup Delay','Cleared Customs','Carrier','Clearance Delay','Clearance in Progress','Customs','At FedEx origin facility','Split Status','Order Created','Shipper','Shipment information sent to USPS','At Sort Facility','Shipment Exception','Delivered','Out for Delivery','Delivery Delay','Delivery Exception','Enroute to Origin Airport','Hold at Location','Delay','Vehicle furnished but not used','Vehicle Dispatched','Departed','Picked Up','Left Origin','Picked up (see Details)','Transfer','Transfer Partner','Plane in Flight','Return label link cancelled by shipment originator','Plane Landed','In Progress','At Airport','In transit (see Details)','At Canada Post facility','At Delivery','At FedEx Facility','Enroute to Delivery','Enroute to Airport OR Export Approved','In Transit','At Pickup','Arrived at','At USPS facility','Enroute to Pickup','Cancelled','Error'])
+	}
+	if(!frm.doc.is_fedex_account){
+		cur_frm.set_df_property("shipment_status","options",["","Delivered","In Transit","Cancelled","Error"])
+	}
+}
+
+
 cur_frm.cscript.enable_fedex_fields = function(frm){
 	var fields = ["drop_off_type", "service_type", "packaging_type", "total_handling_units",
 			"shipping_payment_by", "duties_payment_by", "no_of_packages", "shipment_purpose",
@@ -178,7 +246,13 @@ cur_frm.cscript.enable_fedex_fields = function(frm){
 	$.each(fields, function(i, field){
 		frm.toggle_reqd(field, frm.doc.is_fedex_account);	
 	});
+	cur_frm.cscript.add_options_for_shipment_status(frm);
 	frm.toggle_enable("fedex_tracking_id", !frm.doc.is_fedex_account);
+	frm.toggle_enable("shipment_status", frm.doc.shipment_forwarder && !frm.doc.is_fedex_account);
+	frm.toggle_enable("shipment_status_description", frm.doc.shipment_forwarder && !frm.doc.is_fedex_account);
+	frm.toggle_enable("actual_delivery_date", frm.doc.shipment_forwarder && !frm.doc.is_fedex_account);
+	frm.toggle_enable("estimated_delivery_date", frm.doc.shipment_forwarder && !frm.doc.is_fedex_account);
+	//frm.toggle_enable("last_shipment_status_update_date", !frm.doc.is_fedex_account);
 }
 
 
@@ -236,7 +310,9 @@ cur_frm.cscript.get_items = function(doc, cdt, cdn) {
 				cur_frm.set_value("fedex_package_details", []);
 				cur_frm.set_value("item_packing_details", []);
 				cur_frm.set_value("no_of_packages", "");
+				cur_frm.set_value("no_of_packages", 1);
 				cur_frm.cscript.set_total_handling_units(cur_frm);
+				cur_frm.cscript.set_item_weight_uom("Kg");
 				cur_frm.cscript.calculate_total_pkg_wt(cur_frm);
 				cur_frm.refresh_fields();
 			}
@@ -315,7 +391,6 @@ cur_frm.cscript.calc_net_total_pkg = function(doc, ps_detail) {
 	var net_weight_pkg = 0;
 	doc.net_weight_uom = (ps_detail && ps_detail.length) ? ps_detail[0].weight_uom : '';
 	doc.gross_weight_uom = doc.net_weight_uom;
-
 	for(var i=0; i<ps_detail.length; i++) {
 		var item = ps_detail[i];
 		if(item.weight_uom != doc.net_weight_uom) {
@@ -347,6 +422,20 @@ frappe.ui.form.on("Packing Slip Item", "total_weight", function(frm, cdt, cdn){
 	cur_frm.cscript.calculate_total_pkg_wt(frm);
 })
 
+cur_frm.cscript.concate_weight_uom_formatter = function(frm,uom){
+	var df_1 = frappe.meta.get_docfield("Packing Slip", "net_weight_pkg", frm.doc.name)
+	df_1.formatter = function(value, df, options, doc) {
+		var uom_net_weight_pkg = uom ? uom :""
+		return frappe.form.formatters._right( (value==null || value==="") ? "" : value + "  " + uom_net_weight_pkg , options)
+	}
+	var df_2 = frappe.meta.get_docfield("Packing Slip", "gross_weight_pkg", frm.doc.name)
+	df_2.formatter = function(value, df, options, doc) {
+		var uom_net_weight_pkg = uom ? uom :""
+		return frappe.form.formatters._right( (value==null || value==="") ? "" : value + "  " + uom_net_weight_pkg , options)
+	}
+	frm.refresh_fields();
+}
+
 cur_frm.cscript.set_weight_uom_formatter = function(){
 	$.each(["net_weight", "total_weight"], function(i, field){
 		var df = frappe.meta.get_docfield("Packing Slip Item", field, cur_frm.doc.name);
@@ -355,4 +444,27 @@ cur_frm.cscript.set_weight_uom_formatter = function(){
 			return frappe.form.formatters._right( (value==null || value==="") ? "" : value + "  " + uom , options)
 		}
 	});
+}
+
+cur_frm.cscript.track_fedex_shipment = function(frm){
+	frappe.call({
+		freeze:true,
+		freeze_message:"Please Wait.......",
+		method: "fedex_integration.fedex_integration.custom_packing_slip.custom_packing_slip.track_fedex_shipment",
+		args: {tracking_id: frm.doc.fedex_tracking_id, fedex_account:frm.doc.shipment_forwarder},
+		callback: function(r, rt) {
+			if(r.message){
+				cur_frm.cscript.add_options_for_shipment_status(frm);
+				cur_frm.set_value("estimated_delivery_date",r.message['EstimatedDelivery'] ? r.message['EstimatedDelivery']:"")
+				cur_frm.set_value("actual_delivery_date",r.message['ActualDelivery'] ? r.message['ActualDelivery']:"")		
+				cur_frm.set_value("shipment_status",r.message['shipment_status'] ? r.message['shipment_status']:"")
+				cur_frm.set_value("shipment_status_description",r.message['shipment_description'] ? r.message['shipment_description']:"")
+				cur_frm.set_value("last_shipment_status_update_date",frappe.datetime.now_datetime())
+				if(r.message['message']) {
+					msgprint(r.message["message"]);
+				}
+				frm.save_or_update();
+			}
+		}
+	})
 }

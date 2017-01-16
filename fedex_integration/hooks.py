@@ -67,6 +67,8 @@ app_include_js = "/assets/js/fedex.min.js"
 # ---------------
 # Hook on document methods and events
 
+notification_config = "fedex_integration.fedex_integration.custom_packing_slip.custom_packing_slip.get_notification_config"
+
 fixtures = ["Country", "Property Setter", "Custom Field", "FedEx Package", "UOM"]
 
 doc_events = {

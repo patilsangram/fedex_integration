@@ -15,6 +15,18 @@ from collections import defaultdict
 from erpnext.setup.utils import get_exchange_rate
 
 
+def get_notification_config():
+	return { "for_doctype":
+		{
+			"Packing Slip": {
+				"shipment_status": ("!=", "Delivered"),
+				"docstatus": ("!=", 2)
+			}
+		}
+	}
+
+
+
 uom_mapper = {"Kg":"KG", "LB":"LB"}
 
 def validate_for_package_count(doc, method):
@@ -128,7 +140,6 @@ def get_fedex_shipment_rate(doc, method):
 			rate_request = fedex.get_shipment_rate(doc)
 			set_shipment_rate(doc, rate_request)
 		except Exception,e:
-			print "traceback__________", frappe.get_traceback()
 			frappe.throw(cstr(e))
 
 def set_shipment_rate(doc, rate_request):
@@ -218,3 +229,11 @@ def validate_for_email_notification(doc):
 			frappe.throw(_("For FedEx Notification table, Please enter email id in row {0}.".format(row.idx)))
 
 
+@frappe.whitelist()
+def track_fedex_shipment(tracking_id, fedex_account):
+	fedex = FedexController(fedex_account)
+	try:
+		response = fedex.track_shipment(tracking_id)
+		return response
+	except Exception,e:
+		frappe.throw(cstr(e))
