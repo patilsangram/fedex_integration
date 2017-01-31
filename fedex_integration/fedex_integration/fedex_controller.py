@@ -159,8 +159,8 @@ class FedexController():
 		doc.total = total_value
 
 	
-	def set_package_data(self, pkg, shipment, pkg_no, doc):
-		package = self.set_package_weight(shipment, pkg, doc)
+	def set_package_data(self, pkg, shipment, pkg_no, doc, so_no):
+		package = self.set_package_weight(shipment, pkg, doc, so_no)
 		self.set_package_dimensions(shipment, pkg, package)
 		package.SequenceNumber = pkg_no
 		shipment.RequestedShipment.RequestedPackageLineItems = [package]
@@ -176,7 +176,7 @@ class FedexController():
 		dimn.Units = pkg.unit
 		package.Dimensions = dimn
 	
-	def set_package_weight(self, shipment, pkg, doc):
+	def set_package_weight(self, shipment, pkg, doc, so_no):
 		package = shipment.create_wsdl_object_of_type('RequestedPackageLineItem')
 		package.PhysicalPackaging = pkg.physical_packaging
 		# adding package weight
@@ -185,10 +185,10 @@ class FedexController():
 		package_weight.Value = pkg.package_weight
 		package.Weight = package_weight
 		# Adding references as required by label evaluation process
-		for ref, field in {"P_O_NUMBER":"shipment_type", "DEPARTMENT_NUMBER":"octroi_payment_by"}.iteritems():
+		for ref, ref_value in {"P_O_NUMBER":so_no, "DEPARTMENT_NUMBER":""}.iteritems():
 			ref_data = shipment.create_wsdl_object_of_type('CustomerReference')
 			ref_data.CustomerReferenceType = ref
-			ref_data.Value = doc.get(field)
+			ref_data.Value = ref_value
 			package.CustomerReferences.append(ref_data)
 		return package
 
@@ -290,7 +290,7 @@ class FedexController():
 				}
 
 
-	def get_shipment_rate(self, doc):
+	def get_shipment_rate(self, doc, so_no):
 		rate_request = FedexRateServiceRequest(self.config_obj)
 		self.set_shipment_details(doc, rate_request)
 		self.set_shipper_info(doc.company_address_name, rate_request)
@@ -299,7 +299,7 @@ class FedexController():
 		rate_request.RequestedShipment.EdtRequestType = 'NONE'
 
 		for row in doc.fedex_package_details:  
-			package1 = self.set_package_weight(rate_request, row, doc)
+			package1 = self.set_package_weight(rate_request, row, doc, so_no)
 			package1.GroupPackageCount = 1
 			rate_request.add_package(package1)
 

@@ -59,18 +59,18 @@ def validate_package_details(doc, method):
 def init_fedex_shipment(doc, method):
 	if doc.is_fedex_account and doc.no_of_packages:
 		try:
-			label_data = tuple()
+			so_no = frappe.db.get_value("Delivery Note Item", {"parent":doc.delivery_note}, "against_sales_order") or ""
 			fedex = FedexController(doc.shipment_forwarder)
 			shipment  = fedex.init_shipment(doc)
 			for index, pkg in enumerate(doc.fedex_package_details):
 				if index:
 					shipment.RequestedShipment.MasterTrackingId.TrackingNumber = doc.fedex_tracking_id
 					shipment.RequestedShipment.MasterTrackingId.TrackingIdType.value = 'EXPRESS'
-					fedex.set_package_data(pkg, shipment, index + 1, doc)
+					fedex.set_package_data(pkg, shipment, index + 1, doc, so_no)
 				else:
 					shipment.RequestedShipment.TotalWeight.Units = uom_mapper.get(doc.gross_weight_uom)
 					shipment.RequestedShipment.TotalWeight.Value = doc.gross_weight_pkg
-					fedex.set_package_data(pkg, shipment, index + 1, doc)
+					fedex.set_package_data(pkg, shipment, index + 1, doc, so_no)
 					shipment.send_validation_request()
 				shipment.send_request()
 				fedex.validate_fedex_shipping_response(shipment, pkg.fedex_package)
@@ -135,9 +135,10 @@ def schedule_pickup(request_data):
 
 def get_fedex_shipment_rate(doc, method):
 	if doc.is_fedex_account:
+		so_no = frappe.db.get_value("Delivery Note Item", {"parent":doc.delivery_note}, "against_sales_order") or ""
 		fedex = FedexController(doc.shipment_forwarder)
 		try:
-			rate_request = fedex.get_shipment_rate(doc)
+			rate_request = fedex.get_shipment_rate(doc, so_no)
 			set_shipment_rate(doc, rate_request)
 		except Exception,e:
 			frappe.throw(cstr(e))
