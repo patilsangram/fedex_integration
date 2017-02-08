@@ -69,7 +69,7 @@ app_include_js = "/assets/js/fedex.min.js"
 
 notification_config = "fedex_integration.fedex_integration.custom_packing_slip.custom_packing_slip.get_notification_config"
 
-fixtures = ["Country", "Property Setter", "Custom Field", "FedEx Package", "UOM"]
+fixtures = ["Country", "Property Setter", "Custom Field", "FedEx Package", "UOM", "Role"]
 
 doc_events = {
 	"Packing Slip":{

@@ -9,6 +9,6 @@ def get_data():
 			"color": "#1ABC9C",
 			"icon": "octicon octicon-rocket",
 			"type": "module",
-			"label": _("Freight Management")
+			"label": _("Logistics")
 		}
 	]

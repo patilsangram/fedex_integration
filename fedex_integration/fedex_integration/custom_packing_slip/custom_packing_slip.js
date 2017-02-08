@@ -1,5 +1,6 @@
 cur_frm.add_fetch("delivery_note", "customer", "customer");
 cur_frm.add_fetch("delivery_note", "customer_name", "customer_name");
+cur_frm.add_fetch("contact", "email_id", "email_id");
 
 frappe.ui.form.on("Packing Slip", "shipping_address_name", function(frm, cdt, cdn){
 	erpnext.utils.get_address_display(frm, 'shipping_address_name', 'shipping_address', true);
@@ -103,6 +104,7 @@ frappe.ui.form.on('Packing Slip', {
 							}
 						});
 						cur_frm.refresh_field("fedex_package_details");
+						cur_frm.cscript.add_items(frm, r.message[0].name);
 						cur_frm.cscript.set_package_uom(frm);
 					}else{
 						frappe.msgprint(__(repl("%(pkg_no)s Packages not found in FedEx Package master.\
@@ -193,13 +195,16 @@ cur_frm.cscript.schedule_pickup = function(){
 				{fieldtype:'Datetime', fieldname:'ready_time', label: __('Package Ready Time'), 'reqd':1},
 			],
 			function(data){
+				var sender_row = cur_frm.doc.fedex_notification.filter(function(row){ return row.notify_to == "Sender" })
+				var sender_email = sender_row.length ? sender_row[0].email_id : "";
 				frappe.call({
 					freeze:true,
 					freeze_message: __("Scheduling pickup................."),
 					method:"fedex_integration.fedex_integration.custom_packing_slip.custom_packing_slip.schedule_pickup",
 					args:{"request_data":{"fedex_account":cur_frm.doc.shipment_forwarder, "gross_weight":cur_frm.doc.gross_weight_pkg, 
 											"uom":cur_frm.doc.gross_weight_uom, "package_count":cur_frm.doc.no_of_packages,
-											"shipper_id":cur_frm.doc.company_address_name, "ready_time":data.ready_time}},
+											"shipper_id":cur_frm.doc.company_address_name, "ready_time":data.ready_time,
+											"email_id":sender_email}},
 					callback:function(r){
 					if(r.message.response == "SUCCESS"){
 							cur_frm.set_value("is_pickup_scheduled", true);
@@ -468,3 +473,27 @@ cur_frm.cscript.track_fedex_shipment = function(frm){
 		}
 	})
 }
+
+
+cur_frm.cscript.add_items = function(frm, pkg_no){
+	$.each(frm.doc.items, function(index, item_row){
+		var row = frappe.model.add_child(frm.doc, "FedEx Packing Details", "item_packing_details");
+		row.item_code = item_row.item_code;
+		row.qty = item_row.qty;
+		row.fedex_package = pkg_no;
+	})
+	cur_frm.refresh_field("item_packing_details");
+}
+
+cur_frm.set_query('contact', 'fedex_notification', function(doc, cdt, cdn) {
+	var d  = locals[cdt][cdn];
+	var filter_dict = {};
+	if(d.notify_to == "Recipient"){
+		filter_dict = {
+			filters:{
+				"customer":doc.customer
+			}
+		}
+	}
+	return filter_dict
+});

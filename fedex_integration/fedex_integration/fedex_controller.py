@@ -258,7 +258,7 @@ class FedexController():
 		
 		pickup_service = FedexCreatePickupRequest(self.config_obj)
 		pickup_service.OriginDetail.PickupLocation.Contact.PersonName = shipper_details.get("address_title")
-		pickup_service.OriginDetail.PickupLocation.Contact.EMailAddress = shipper_details.get("email_id")
+		pickup_service.OriginDetail.PickupLocation.Contact.EMailAddress = request_data.get("email_id") or shipper_details.get("email_id")
 		pickup_service.OriginDetail.PickupLocation.Contact.CompanyName = shipper_details.get("company")
 		pickup_service.OriginDetail.PickupLocation.Contact.PhoneNumber = shipper_details.get("phone")
 		pickup_service.OriginDetail.PickupLocation.Address.StateOrProvinceCode = shipper_details.get("state_code")
@@ -339,7 +339,7 @@ class FedexController():
 			for row in doc.fedex_notification:
 				notify_dict = {
 					"EMailNotificationRecipientType":notify_mapper.get(row.notify_to, "SHIPPER"),
-					"EMailAddress":email_id_mapper.get(row.notify_to, {}).get("email_id", row.email_id or ""),
+					"EMailAddress":row.email_id,
 					"NotificationEventsRequested":[ fedex_event for event, fedex_event in {"shipment":"ON_SHIPMENT", "delivery":"ON_DELIVERY", \
 														"tendered":"ON_TENDER", "exception":"ON_EXCEPTION"}.items() if row.get(event)],
 					"Format":"HTML",
