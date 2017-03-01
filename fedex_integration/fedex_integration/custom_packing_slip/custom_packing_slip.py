@@ -13,7 +13,8 @@ from fedex.services.track_service import FedexTrackRequest
 from fedex_integration.fedex_integration.fedex_controller import FedexController
 from collections import defaultdict
 from erpnext.setup.utils import get_exchange_rate
-
+from frappe.desk.reportview import get_match_cond
+from erpnext.controllers.queries import get_filters_cond
 
 def get_notification_config():
 	return { "for_doctype":
@@ -166,23 +167,45 @@ def validate_for_existing_packing_slip(doc, method):
 
 @frappe.whitelist()
 def warehouse_query(doctype, txt, searchfield, start, page_len, filters):
-	return frappe.db.sql("""select distinct wr.name, CONCAT_WS(" : ", "Actual Qty", ifnull(bin.actual_qty, 0))
-							from `tabWarehouse` wr
-							left join `tabBin` bin
-							on wr.name = bin.warehouse
-							where wr.is_group = 0
-							and wr.company in ("", %(company)s)
-							and bin.item_code = %(item)s
-							and wr.`{key}` like %(txt)s
-							order by name desc
-							limit %(start)s, %(page_len)s """.format(key=frappe.db.escape(searchfield)),
-							{
-							 	"txt": "%%%s%%" % frappe.db.escape(txt),
-								"start": start,
-								"page_len": page_len,
-								"item":filters.get("item"),
-								"company":filters.get("company", "")
-							})
+	# Should be used when item code is passed in filters.
+	conditions, bin_conditions = [], []
+	filter_dict = get_doctype_wise_filters(filters)
+
+	sub_query = """ select round(`tabBin`.actual_qty, 2) from `tabBin`
+		where `tabBin`.warehouse = `tabWarehouse`.name
+		{bin_conditions} """.format(
+		bin_conditions=get_filters_cond(doctype, filter_dict.get("Bin"), bin_conditions))
+
+	response = frappe.db.sql("""select `tabWarehouse`.name,
+		CONCAT_WS(" : ", "Actual Qty", ifnull( ({sub_query}), 0) ) as actual_qty
+		from `tabWarehouse`
+		where
+		   `tabWarehouse`.`{key}` like %(txt)s
+			{fcond} {mcond}
+		order by
+			`tabWarehouse`.name desc
+		limit
+			%(start)s, %(page_len)s
+		""".format(
+			sub_query=sub_query,
+			key=frappe.db.escape(searchfield),
+			fcond=get_filters_cond(doctype, filter_dict.get("Warehouse"), conditions),
+			mcond=get_match_cond(doctype)
+		),
+		{
+			"txt": "%%%s%%" % frappe.db.escape(txt),
+			"start": start,
+			"page_len": page_len
+		})
+	return response
+
+
+def get_doctype_wise_filters(filters):
+	# Helper function to seperate filters doctype_wise
+	filter_dict = defaultdict(list)
+	for row in filters:
+		filter_dict[row[0]].append(row)
+	return filter_dict
 
 def write_response_to_file(file_name, response):
 	with open(file_name, "w") as fi:
