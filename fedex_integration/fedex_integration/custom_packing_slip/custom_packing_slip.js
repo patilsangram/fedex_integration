@@ -121,10 +121,10 @@ frappe.ui.form.on('Packing Slip', {
 					frappe.render_template("fedex_tracking",{"tracking_ids":frm.doc.fedex_package_details}));
 				if(!frm.doc.is_pickup_scheduled){
 					cur_frm.add_custom_button(__('Schedule Pickup'),
-						function() { cur_frm.cscript.schedule_pickup(); }, 'icon-retweet', 'btn-default');	
+						function() { cur_frm.cscript.schedule_pickup(); });	
 				}
 				cur_frm.add_custom_button(__('Track Shipment'),
-						function() { cur_frm.cscript.track_fedex_shipment(frm); }, 'icon-retweet', 'btn-default');
+						function() { cur_frm.cscript.track_fedex_shipment(frm); });
 			}
 
 		}else{
