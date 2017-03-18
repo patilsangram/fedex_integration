@@ -2,6 +2,8 @@ cur_frm.add_fetch("delivery_note", "customer", "customer");
 cur_frm.add_fetch("delivery_note", "customer_name", "customer_name");
 cur_frm.add_fetch("contact", "email_id", "email_id");
 
+var uom_mapper = {"Kg":"set_kg", "LB":"set_lb"};
+
 frappe.ui.form.on("Packing Slip", "shipping_address_name", function(frm, cdt, cdn){
 	erpnext.utils.get_address_display(frm, 'shipping_address_name', 'shipping_address', true);
 })
@@ -131,6 +133,10 @@ frappe.ui.form.on('Packing Slip', {
 			$(frm.fields_dict.master_tracking_id.wrapper).html("");
 		}
 		if(frm.doc.__islocal){
+			if(frm.doc.amended_from){
+				frm.set_value("fedex_tracking_id", "");
+				frm.set_value("master_tracking_id", "");
+			}
 			cur_frm.cscript.set_kg_and_add_one_package(frm);
 		}
 		cur_frm.cscript.enable_fedex_fields(frm);
@@ -143,7 +149,7 @@ frappe.ui.form.on('Packing Slip', {
 		}
 	},
 	set_lb:function(frm){
-		if (frm.doc.set_lb){				
+		if (frm.doc.set_lb){
 			cur_frm.cscript.concate_weight_uom_formatter(frm, "LB");
 			cur_frm.events.init_weight_uom_change_process(frm, "LB", "IN", "set_kg");
 		}
@@ -185,7 +191,8 @@ cur_frm.cscript.add_demension_in_fedex_package_details = function(demension_name
 }
 
 cur_frm.cscript.set_kg_and_add_one_package = function(){
-	cur_frm.set_value("set_kg",1);
+	var uom = frappe.boot.company_uom || "Kg"
+	cur_frm.set_value(uom_mapper[uom], 1);
 	cur_frm.set_value("no_of_packages",1);
 }
 
@@ -317,7 +324,8 @@ cur_frm.cscript.get_items = function(doc, cdt, cdn) {
 				cur_frm.set_value("no_of_packages", "");
 				cur_frm.set_value("no_of_packages", 1);
 				cur_frm.cscript.set_total_handling_units(cur_frm);
-				cur_frm.cscript.set_item_weight_uom("Kg");
+				var uom = cur_frm.doc.set_lb ? "LB" : "Kg"
+				cur_frm.cscript.set_item_weight_uom(uom);
 				cur_frm.cscript.calculate_total_pkg_wt(cur_frm);
 				cur_frm.refresh_fields();
 			}

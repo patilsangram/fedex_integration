@@ -259,3 +259,9 @@ def track_fedex_shipment(tracking_id, fedex_account):
 		return response
 	except Exception,e:
 		frappe.throw(cstr(e))
+
+
+def boot_session(bootinfo):
+	default_company = frappe.db.get_single_value('Global Defaults', 'default_company')
+	bootinfo["company_uom"] = frappe.db.get_value("Company", default_company, "uom") or "Kg"
+	print "check defaultcompany", default_company, bootinfo["company_uom"]

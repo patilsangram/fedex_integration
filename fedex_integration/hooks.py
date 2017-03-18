@@ -83,6 +83,8 @@ doc_events = {
 	},
 }
 
+boot_session = "fedex_integration.fedex_integration.custom_packing_slip.custom_packing_slip.boot_session"
+
 # Scheduled Tasks
 # ---------------
 

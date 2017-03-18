@@ -16,6 +16,7 @@ from custom_packing_slip.packing_slip_track_status import packing_slip_tracking_
 import frappe.client as client
 import base64
 import datetime
+import logging
 
 class FedexController():
 	
@@ -331,6 +332,7 @@ class FedexController():
 
 	def set_email_notification(self, shipment, doc, shipper_details, recipient_details):
 		if doc.fedex_notification:
+			shipment.RequestedShipment.SpecialServicesRequested.SpecialServiceTypes.append("EMAIL_NOTIFICATION")
 			shipment.RequestedShipment.SpecialServicesRequested.EMailNotificationDetail.AggregationType = "PER_SHIPMENT"
 			notify_mapper = {"Sender":"SHIPPER", "Recipient":"RECIPIENT", "Other-1":"OTHER", \
 								"Other-2":"OTHER", "Other-3":"OTHER"}
@@ -343,8 +345,7 @@ class FedexController():
 					"NotificationEventsRequested":[ fedex_event for event, fedex_event in {"shipment":"ON_SHIPMENT", "delivery":"ON_DELIVERY", \
 														"tendered":"ON_TENDER", "exception":"ON_EXCEPTION"}.items() if row.get(event)],
 					"Format":"HTML",
-					"Localization":{"LanguageCode":"EN", \
-									"LocaleCode":email_id_mapper.get(row.notify_to, {}).get("country_code", "IN")}
+					"Localization":{"LanguageCode":"EN"}
 				}
 				shipment.RequestedShipment.SpecialServicesRequested.EMailNotificationDetail.Recipients.append(notify_dict)
 
