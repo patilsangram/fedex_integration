@@ -29,7 +29,7 @@ class FedexController():
 	def __init__(self, fedex_account):
 		settings = frappe.db.get_value("Shipment Forwarder", fedex_account, "*")
 		self.config_obj = FedexConfig(key= settings.get("fedex_key"),
-								password= client.get_password("Shipment Forwarder", fedex_account, "password"),
+								password= frappe.get_doc("Shipment Forwarder", fedex_account).get_password("password"),
 								account_number= settings.get("account_no"),
 								meter_number= settings.get("fedex_meter_no"),
 								freight_account_number= "510087020",
