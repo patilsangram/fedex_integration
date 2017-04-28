@@ -95,10 +95,10 @@ class FedexController():
 		recipient_details = frappe.db.get_value("Address", doc.shipping_address_name, "*", as_dict=True)
 		self.validate_address(recipient_details)
 		shipment.RequestedShipment.Recipient.Contact.PersonName = recipient_details.get("address_title")
-		shipment.RequestedShipment.Recipient.Contact.CompanyName = recipient_details.get("address_title")
+		shipment.RequestedShipment.Recipient.Contact.CompanyName = recipient_details.get("customer")
 		shipment.RequestedShipment.Recipient.Contact.PhoneNumber = recipient_details.get("phone")
 		shipment.RequestedShipment.Recipient.Address.StreetLines = [recipient_details.get("address_line1"), \
-																		recipient_details.get("address_line1")]
+			recipient_details.get("address_line2")]
 		shipment.RequestedShipment.Recipient.Address.City = recipient_details.get("city")
 		shipment.RequestedShipment.Recipient.Address.StateOrProvinceCode = recipient_details.get("state_code")
 		shipment.RequestedShipment.Recipient.Address.PostalCode = recipient_details.get("pincode")
