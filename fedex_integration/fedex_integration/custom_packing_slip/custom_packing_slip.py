@@ -217,7 +217,7 @@ def verify_postal_code(doc, method):
 		address = frappe.db.get_value("Address", {"name":doc.get("shipping_address_name")}, "*", as_dict=True)
 		if not frappe.db.get_value("FedEx Postal Code", {"postal_code":address.get("pincode"), \
 			"country_name":address.get("country")}, "name"):
-			frappe.throw(_("FedEx shipment delivery is not allowed at Recipient postal pode {0}".format(address.get("pincode"))))
+			frappe.throw(_("FedEx shipment delivery is not allowed at Recipient postal code {0}".format(address.get("pincode"))))
 
 
 def get_item_packing_dict(doc):
