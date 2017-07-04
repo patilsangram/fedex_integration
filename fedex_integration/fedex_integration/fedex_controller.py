@@ -186,7 +186,7 @@ class FedexController():
 		package_weight.Value = pkg.package_weight
 		package.Weight = package_weight
 		# Adding references as required by label evaluation process
-		for ref, ref_value in {"P_O_NUMBER":so_no, "DEPARTMENT_NUMBER":""}.iteritems():
+		for ref, ref_value in {"P_O_NUMBER":so_no, "DEPARTMENT_NUMBER":"", "CUSTOMER_REFERENCE":doc.octroi_payment_by}.iteritems():
 			ref_data = shipment.create_wsdl_object_of_type('CustomerReference')
 			ref_data.CustomerReferenceType = ref
 			ref_data.Value = ref_value
